@@ -195,7 +195,15 @@ function download(name, blobOrText, type = 'text/plain') {
 const blobToBase64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
 function base64ToBlob(b64, type) { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); }
 function splitSentences(text) {
-  return text.replace(/\r/g, '').split('\n').flatMap(par => par.match(/[^.!?。！？…]+(?:[.!?。！？…]+["'”’»)]*|$)/g) || []).map(s => s.trim()).filter(Boolean);
+  const parts = text.replace(/\r/g, '').split('\n').flatMap(par => par.match(/[^.!?。！？…]+(?:[.!?。！？…]+["'”’»)]*|$)/g) || []).map(s => s.trim()).filter(Boolean);
+  // A part that starts in lowercase (after an optional dialogue dash) continues the line before it,
+  // e.g. "— Quem é?" + "— pergunta ele." -> "— Quem é? — pergunta ele."
+  const out = [];
+  for (const s of parts) {
+    if (out.length && /^[—–-]?\s*\p{Ll}/u.test(s)) out[out.length - 1] += ' ' + s;
+    else out.push(s);
+  }
+  return out;
 }
 const toLines = text => text.replace(/\r/g, '').split('\n').map(s => s.trim()).filter(Boolean);
 
