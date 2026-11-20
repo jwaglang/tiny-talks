@@ -208,7 +208,7 @@ function splitSentences(text) {
 const toLines = text => text.replace(/\r/g, '').split('\n').map(s => s.trim()).filter(Boolean);
 
 // ---------- Settings (this browser only) ----------
-let settings = { elKey: '', elVoice: '', elModel: 'eleven_multilingual_v2' };
+let settings = { elKey: '', elVoice: '', elModel: 'eleven_multilingual_v2', mmEmail: '' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('tt_settings') || '{}')); } catch (e) { /* storage blocked */ }
 function saveSettings() { try { localStorage.setItem('tt_settings', JSON.stringify(settings)); } catch (e) { toast('This browser blocked saving settings.'); } }
 
@@ -348,6 +348,49 @@ function deviations(ops, line, lang) {
   return out.map(d => ({ line: d.line, expected: d.expected.join(sp), said: d.said.join(sp), branch: '', note: '' }));
 }
 
+// ---------- Translation (MyMemory, free, no key) ----------
+function decodeEntities(s) { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; }
+async function translateLines(lines, from, to, onProgress) {
+  const out = new Array(lines.length); let next = 0, done = 0;
+  async function worker() {
+    while (next < lines.length) {
+      const k = next++, q = lines[k];
+      if (new Blob([q]).size > 500) throw new Error(`Line ${k + 1} is too long to translate automatically (500 bytes max). Split it, or translate that line yourself.`);
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=${encodeURIComponent(from + '|' + to)}` + (settings.mmEmail ? `&de=${encodeURIComponent(settings.mmEmail)}` : '');
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`The translation service replied ${r.status}.`);
+      const j = await r.json();
+      if (j.quotaFinished || String(j.responseStatus) === '429') throw new Error("Today's free translation limit is used up. Add your email in Settings to raise it, or try tomorrow.");
+      if (String(j.responseStatus) !== '200' || !j.responseData) throw new Error(`Translation failed on line ${k + 1}: ${j.responseDetails || 'no reply'}`);
+      out[k] = decodeEntities(j.responseData.translatedText || '').trim();
+      onProgress && onProgress(++done, lines.length);
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  return out;
+}
+async function autoTranslate(btn) {
+  const l2 = toLines($('#f-l2text').value), l1 = toLines($('#f-l1text').value);
+  let src, from, to, target;
+  if (l2.length && !l1.length) { src = l2; from = $('#f-l2').value; to = $('#f-l1').value; target = '#f-l1text'; }
+  else if (l1.length && !l2.length) { src = l1; from = $('#f-l1').value; to = $('#f-l2').value; target = '#f-l2text'; }
+  else if (l2.length && l1.length) {
+    if (!confirm('Replace the L1 text with a new automatic translation of the L2?')) return false;
+    src = l2; from = $('#f-l2').value; to = $('#f-l1').value; target = '#f-l1text';
+  } else { toast('Add the text first.'); return false; }
+  const label = btn ? btn.textContent : '';
+  if (btn) btn.disabled = true;
+  try {
+    const res = await translateLines(src, from, to, (d, n) => { if (btn) btn.textContent = `Translating ${d}/${n}...`; });
+    $(target).value = res.join('\n'); updateCounts();
+    toast('Translated. Check it before you save.');
+    return true;
+  } catch (err) {
+    toast(err.message.includes('Failed to fetch') ? 'Could not reach the translation service. Check your connection.' : err.message, 5000);
+    return false;
+  } finally { if (btn) { btn.disabled = false; btn.textContent = label; } }
+}
+
 // ---------- ElevenLabs ----------
 async function generateAudio(lines) {
   if (!settings.elKey || !settings.elVoice) throw new Error('Add your ElevenLabs key and voice ID in Settings first.');
@@ -460,7 +503,8 @@ function editHTML() {
      <textarea id="f-l2text" rows="7" placeholder="One sentence per line">${esc(t.lines.map(L => L.l2).join('\n'))}</textarea>
      <label for="f-l1text">The same talk in L1</label>
      <textarea id="f-l1text" rows="7" placeholder="One sentence per line, matching the L2 lines">${esc(t.lines.map(L => L.l1).join('\n'))}</textarea>
-     <div class="row"><button class="btn small" data-act="split">Split both into sentences</button><span id="f-counts" class="muted"></span></div>
+     <div class="row"><button class="btn" data-act="translate">Translate automatically</button><button class="btn small" data-act="split">Split both into sentences</button><span id="f-counts" class="muted"></span></div>
+     <p class="field-note">Paste the talk in either language and press Translate: it fills the other box line by line. If you leave the L1 box empty, saving translates it for you.</p>
      <h3>Audio</h3>
      <p class="field-note" id="f-audio-status">${t.audio ? `This talk has audio (${esc(t.audioSource || 'file')}).` : 'No audio yet. Without audio, the browser\'s built-in voice reads the lines.'}</p>
      <div class="row">
@@ -486,6 +530,9 @@ function updateCounts() {
   el.innerHTML = `L2: ${a} lines · L1: ${b} lines ${a !== b ? '<span class="warn">(they must match)</span>' : ''}`;
 }
 async function saveTalkFromForm() {
+  if (toLines($('#f-l2text').value).length && !toLines($('#f-l1text').value).length) {
+    if (!(await autoTranslate($('[data-act=translate]')))) return;
+  }
   const { l2, l1 } = readForm(), t = editDraft;
   if (!t.title) return toast('Give the talk a title.');
   if (!l2.length) return toast('Add the L2 text.');
@@ -515,6 +562,10 @@ function settingsHTML() {
      <label for="s-key">API key</label><input type="password" id="s-key" value="${esc(settings.elKey)}" style="width:100%">
      <label for="s-voice">Voice ID</label><input type="text" id="s-voice" value="${esc(settings.elVoice)}" style="width:100%" placeholder="Copy it from the voice's page in ElevenLabs">
      <label for="s-model">Model</label><select id="s-model">${EL_MODELS.map(([v, n]) => `<option value="${v}" ${v === settings.elModel ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+     <div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>
+     <h3>Translation</h3>
+     <p class="field-note">Automatic translation uses MyMemory, which is free. Without an email it allows about 5,000 characters a day; with one, about 50,000.</p>
+     <label for="s-mm">Your email (optional)</label><input type="text" id="s-mm" value="${esc(settings.mmEmail)}" style="width:100%">
      <div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>
      <h3>Backup</h3>
      <p class="field-note">Everything lives in this browser. Download a backup now and then, and use it to move your talks to another device.</p>
@@ -756,9 +807,10 @@ document.addEventListener('click', async e => {
         b.disabled = false; b.textContent = 'Make audio with ElevenLabs'; return;
       }
       case 'clear-audio': editDraft.audio = null; editDraft.audioSource = ''; editDraft.lines.forEach(L => { L.start = L.end = null; }); return render();
+      case 'translate': return autoTranslate(b);
       case 'save-talk': return saveTalkFromForm();
       case 'save-settings':
-        settings.elKey = $('#s-key').value.trim(); settings.elVoice = $('#s-voice').value.trim(); settings.elModel = $('#s-model').value;
+        settings.elKey = $('#s-key').value.trim(); settings.elVoice = $('#s-voice').value.trim(); settings.elModel = $('#s-model').value; settings.mmEmail = $('#s-mm').value.trim();
         saveSettings(); return toast('Settings saved in this browser.');
       case 'backup': {
         const talks = await db.all(); const pk = [];
