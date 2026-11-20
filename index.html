@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tiny Talks Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #fdfbf7; --ink: #3e2723; --muted: #7b6a62; --line: #e0e0e0;
+    --c-listen: #e74c3c; --c-read: #f1c40f; --c-write: #2ecc71; --c-speak: #3498db; --c-test: #9b59b6;
+    --ok: #2e7d32; --bad: rgba(231, 76, 60, 0.28);
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Kalam', cursive; margin: 0; padding: 40px 20px; min-height: 100vh; color: var(--ink);
+    background-color: #4a3221;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3Cfilter id='wood'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015 0.15' numOctaves='4' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23634424' surfaceScale='2' result='light'%3E%3CfeDistantLight azimuth='90' elevation='45'/%3E%3C/feDiffuseLighting%3E%3CfeComposite operator='in' in='light' in2='noise'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='100%25' height='100%25' filter='url(%23wood)'/%3E%3C/svg%3E");
+    background-size: 400px;
+  }
+  .wrapper { max-width: 880px; margin: 0 auto; position: relative; padding-right: 44px; }
+  .cover {
+    background-color: #4e342e; padding: 25px; border-radius: 8px 16px 16px 8px; position: relative; z-index: 1;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.6), inset 0 0 20px rgba(0,0,0,0.5);
+    background-image: linear-gradient(to right, rgba(0,0,0,0.4), transparent 5%, transparent 95%, rgba(0,0,0,0.2));
+  }
+  .cover::after { content: ''; position: absolute; top: 10px; bottom: 10px; right: -8px; width: 8px; background: #fdfbf7; border-radius: 0 4px 4px 0; box-shadow: 3px 3px 8px rgba(0,0,0,0.3); z-index: -1; }
+  .page {
+    background-color: var(--paper); background-image: repeating-linear-gradient(transparent, transparent 34px, var(--line) 35px);
+    padding: 40px 55px; border-radius: 2px 8px 8px 2px; box-shadow: inset 5px 0 15px rgba(0,0,0,0.1); min-height: 640px;
+  }
+  .tabs { position: absolute; top: 0; right: 0; }
+  .tab {
+    position: absolute; right: 0; width: 46px; height: 82px; border-radius: 4px 12px 12px 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 3px 3px 8px rgba(0,0,0,0.4);
+    transition: all 0.2s ease; border: 1px solid rgba(0,0,0,0.1);
+  }
+  .tab span { transform: rotate(-90deg); white-space: nowrap; font-family: 'Caveat', cursive; font-size: 1.4em; font-weight: 700; color: rgba(255,255,255,0.95); text-shadow: 1px 1px 1px rgba(0,0,0,0.3); }
+  .tab:hover { width: 51px; right: -5px; }
+  .tab.active { width: 56px; right: -10px; box-shadow: 5px 5px 12px rgba(0,0,0,0.5); }
+  .tab.disabled { opacity: 0.35; pointer-events: none; }
+  .tab[data-tab="0"] { top: 40px; background: var(--c-listen); }
+  .tab[data-tab="1"] { top: 130px; background: var(--c-read); }
+  .tab[data-tab="2"] { top: 220px; background: var(--c-write); }
+  .tab[data-tab="3"] { top: 310px; background: var(--c-speak); }
+  .tab[data-tab="4"] { top: 400px; background: var(--c-test); }
+
+  h1, h2, h3 { font-family: 'Caveat', cursive; margin-top: 0; }
+  h1 { font-size: 3em; margin-bottom: 6px; border-bottom: 2px solid rgba(62,39,35,0.2); padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  h2 { font-size: 2.2em; margin: 18px 0 6px; }
+  h3 { font-size: 1.6em; margin: 16px 0 4px; }
+  .header-links { display: flex; gap: 16px; font-size: 0.42em; }
+  .link { font-family: 'Caveat', cursive; font-size: 1.5em; color: #2980b9; cursor: pointer; border: none; background: none; border-bottom: 2px dotted #2980b9; padding: 0; }
+  .link.red { color: #c0392b; border-color: #c0392b; }
+  .link.green { color: #27ae60; border-color: #27ae60; }
+  .subtitle { font-family: 'Caveat', cursive; font-size: 1.5em; color: var(--muted); margin: 0 0 10px; }
+  .goal { font-family: 'Caveat', cursive; font-size: 1.45em; color: #5d4037; border-bottom: 1px dashed #8d6e63; padding-bottom: 8px; margin: 4px 0 14px; }
+  .muted { color: var(--muted); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 10px 0; }
+
+  .btn { background: #fff; border: 2px solid #8d6e63; padding: 4px 14px; font-family: 'Kalam', cursive; font-size: 1.02em; cursor: pointer; border-radius: 4px; box-shadow: 2px 2px 0 #ccc; color: var(--ink); }
+  .btn:hover { background: #f5f5f5; }
+  .btn.primary { background: #4e342e; color: #fff; border-color: #3e2723; }
+  .btn.good { border-color: var(--ok); color: var(--ok); }
+  .btn.bad { border-color: #c0392b; color: #c0392b; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.small { font-size: 0.9em; padding: 2px 10px; }
+
+  input[type=text], input[type=password], select, textarea {
+    font-family: 'Kalam', cursive; font-size: 17px; color: var(--ink); background: rgba(255,255,255,0.75);
+    border: 1px solid #c9b8ae; border-radius: 4px; padding: 6px 10px;
+  }
+  textarea { width: 100%; line-height: 1.6; resize: vertical; }
+  label { display: block; font-family: 'Caveat', cursive; font-size: 1.35em; margin: 12px 0 2px; }
+  .field-note { font-size: 0.9em; color: var(--muted); margin: 2px 0 0; }
+  .warn { color: #c0392b; }
+
+  .card { display: flex; gap: 14px; padding: 12px 14px; margin: 12px 0; background: rgba(255,255,255,0.8); border: 1px solid #d7ccc8; border-radius: 6px; }
+  .card.done { border-left: 5px solid var(--ok); }
+  .card.locked { opacity: 0.5; }
+  .card-num { font-family: 'Caveat', cursive; font-size: 1.7em; min-width: 30px; line-height: 1.1; }
+  .card-body { flex: 1; min-width: 0; }
+  .tick { color: var(--ok); }
+  .l2 { font-size: 22px; line-height: 1.5; }
+  .l1 { font-size: 19px; line-height: 1.5; color: #555; font-style: italic; }
+  .status { font-family: 'Caveat', cursive; font-size: 1.4em; color: var(--c-speak); }
+  .diff { font-size: 20px; line-height: 1.7; margin: 8px 0; }
+  .diff .wrong { background: var(--bad); border-bottom: 2px solid #c0392b; padding: 0 2px; border-radius: 2px; }
+  .diff .miss { color: #c0392b; opacity: 0.75; font-size: 0.85em; }
+  .verdict-ok { color: var(--ok); font-family: 'Caveat', cursive; font-size: 1.5em; }
+  .verdict-no { color: #c0392b; font-family: 'Caveat', cursive; font-size: 1.5em; }
+
+  .progress { display: flex; gap: 6px; margin: 6px 0; }
+  .bar { flex: 1; height: 9px; background: #eee; border-radius: 5px; overflow: hidden; }
+  .bar > div { height: 100%; }
+  .bar-labels { display: flex; gap: 6px; font-size: 0.8em; color: var(--muted); }
+  .bar-labels span { flex: 1; }
+
+  .lib-item { padding: 14px 16px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 14px; background: #fff; }
+  .lib-item.due { border-left: 5px solid #c0392b; }
+  .lib-title { font-family: 'Caveat', cursive; font-size: 1.7em; font-weight: 700; }
+  .lib-meta { font-size: 0.95em; color: #666; }
+
+  .dev { padding: 8px 10px; margin: 8px 0; border: 1px dashed #c9b8ae; border-radius: 4px; background: rgba(255,255,255,0.6); }
+  .dev select { font-size: 15px; padding: 2px 6px; }
+  .dev input { font-size: 15px; width: 100%; margin-top: 6px; }
+  .srs { margin-top: 18px; padding: 14px; background: rgba(155, 89, 182, 0.06); border: 1px dashed var(--c-test); border-radius: 4px; }
+  .empty { text-align: center; padding: 30px 10px; }
+  .empty p { font-family: 'Caveat', cursive; font-size: 1.6em; color: #666; }
+  #toast { position: fixed; bottom: 20px; right: 20px; background: #4e342e; color: #fff; padding: 10px 20px; border-radius: 4px; font-size: 1.1em; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-width: 80vw; }
+  #toast.show { opacity: 1; }
+  .hidden { display: none !important; }
+  audio { max-width: 100%; }
+
+  @media (max-width: 720px) {
+    body { padding: 12px 6px; }
+    .wrapper { padding-right: 0; }
+    .tabs { position: static; display: flex; gap: 4px; padding: 0 10px; }
+    .tab { position: static; width: auto; height: 38px; flex: 1; border-radius: 10px 10px 0 0; box-shadow: none; }
+    .tab span { transform: none; font-size: 1.2em; }
+    .tab:hover, .tab.active { width: auto; right: 0; }
+    .tab.active { height: 46px; margin-top: -8px; }
+    .cover { padding: 10px; }
+    .page { padding: 22px 16px; }
+    h1 { font-size: 2.3em; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="tabs" id="tabs">
+    <div class="tab" data-tab="0"><span>Listen</span></div>
+    <div class="tab" data-tab="1"><span>Read</span></div>
+    <div class="tab" data-tab="2"><span>Write</span></div>
+    <div class="tab" data-tab="3"><span>Speak</span></div>
+    <div class="tab" data-tab="4"><span>Test</span></div>
+  </div>
+  <div class="cover"><div class="page" id="page"></div></div>
+</div>
+<div id="toast"></div>
+<audio id="player" class="hidden"></audio>
+
+<script>
+'use strict';
+
+// ---------- Constants ----------
+const LANGS = [
+  ['pt-PT', 'Portuguese (Portugal)'], ['pt-BR', 'Portuguese (Brazil)'], ['en-GB', 'English (UK)'], ['en-US', 'English (US)'],
+  ['zh-CN', 'Chinese (Mandarin)'], ['es-ES', 'Spanish (Spain)'], ['fr-FR', 'French'], ['it-IT', 'Italian'],
+  ['de-DE', 'German'], ['ru-RU', 'Russian'], ['ja-JP', 'Japanese'], ['ko-KR', 'Korean'], ['he-IL', 'Hebrew']
+];
+const LAYERS = [
+  { name: 'Listen', color: 'var(--c-listen)', goal: 'Sound to form. Play each line and follow the text. When you can hear every word, test yourself: hide the text and type what you hear.' },
+  { name: 'Read',   color: 'var(--c-read)',   goal: 'Form to meaning. Read each line aloud yourself. Use the audio only to check. Peek at the meaning if you need it, then say whether you understood it.' },
+  { name: 'Write',  color: 'var(--c-write)',  goal: 'Meaning to form. Read the meaning, then write the line from memory. The app checks it against the original.' },
+  { name: 'Speak',  color: 'var(--c-speak)',  goal: 'Form to memory. Track each line in three steps: listen then repeat, speak along with the audio, then say it first and check.' }
+];
+const BRANCHES = ['Grammar', 'Lexicon', 'Phonology', 'Discourse'];
+const EL_MODELS = [['eleven_multilingual_v2', 'Multilingual v2 (best quality)'], ['eleven_turbo_v2_5', 'Turbo v2.5 (faster)'], ['eleven_flash_v2_5', 'Flash v2.5 (fastest)']];
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+const SAMPLE = {
+  title: 'Espelho da Alma', l2Lang: 'pt-PT', l1Lang: 'en-GB',
+  l2: ['A arte, bela e intrigante, é o espelho da alma criativa humana.',
+       'Ela transcende o tempo, capturando emoções, pensamentos e visões únicas.',
+       'Nas pinceladas de um quadro, nas notas de uma melodia, na escultura esculpida com esmero, encontramos um universo de expressão.',
+       'A arte desafia fronteiras, questiona normas e revela verdades ocultas.',
+       'Ela convida-nos a contemplar, a sentir, a refletir.',
+       'Em cada obra, o artista deixa um pedaço de si, imortalizando momentos e ideias.',
+       'Admiramos a arte não apenas pelo que vemos, mas pelo que nos faz sentir e compreender sobre nós mesmos e o mundo à nossa volta.'],
+  l1: ['Art, beautiful and intriguing, is the mirror of the human creative soul.',
+       'It transcends time, capturing emotions, thoughts and unique visions.',
+       'In the brushstrokes of a painting, in the notes of a melody, in a carefully carved sculpture, we find a universe of expression.',
+       'Art challenges boundaries, questions norms and reveals hidden truths.',
+       'It invites us to contemplate, to feel, to reflect.',
+       'In each work, the artist leaves a piece of themselves, immortalising moments and ideas.',
+       'We admire art not only for what we see, but for what it makes us feel and understand about ourselves and the world around us.']
+};
+
+// ---------- Small helpers ----------
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const langName = code => (LANGS.find(l => l[0] === code) || [code, code])[1];
+const noSpaces = lang => /^(zh|ja)/.test(lang);
+const uid = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const today = () => new Date().toISOString().slice(0, 10);
+function toast(msg, ms = 1800) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms); }
+function hexdate(d = new Date()) { return ((d.getFullYear() - 2000).toString(36) + (d.getMonth() + 1).toString(36) + d.getDate().toString(36)).toUpperCase(); }
+function safeName(s) { return String(s).replace(/[\\/:*?"<>|#^[\]]/g, '').trim() || 'Tiny Talk'; }
+function download(name, blobOrText, type = 'text/plain') {
+  const blob = blobOrText instanceof Blob ? blobOrText : new Blob([blobOrText], { type });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+const blobToBase64 = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); });
+function base64ToBlob(b64, type) { const bin = atob(b64); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); }
+function splitSentences(text) {
+  return text.replace(/\r/g, '').split('\n').flatMap(par => par.match(/[^.!?。！？…]+(?:[.!?。！？…]+["'”’»)]*|$)/g) || []).map(s => s.trim()).filter(Boolean);
+}
+const toLines = text => text.replace(/\r/g, '').split('\n').map(s => s.trim()).filter(Boolean);
+
+// ---------- Settings (this browser only) ----------
+let settings = { elKey: '', elVoice: '', elModel: 'eleven_multilingual_v2' };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('tt_settings') || '{}')); } catch (e) { /* storage blocked */ }
+function saveSettings() { try { localStorage.setItem('tt_settings', JSON.stringify(settings)); } catch (e) { toast('This browser blocked saving settings.'); } }
+
+// ---------- Storage (IndexedDB, so audio fits) ----------
+const db = (() => {
+  let p;
+  const open = () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open('tiny-talks', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('talks', { keyPath: 'id' });
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }));
+  const run = (mode, fn) => open().then(d => new Promise((res, rej) => {
+    const t = d.transaction('talks', mode); const req = fn(t.objectStore('talks'));
+    t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error);
+  }));
+  return { all: () => run('readonly', s => s.getAll()), get: id => run('readonly', s => s.get(id)), put: v => run('readwrite', s => s.put(v)), del: id => run('readwrite', s => s.delete(id)) };
+})();
+
+// ---------- State ----------
+let talk = null;          // the open talk
+let view = 'library';     // library | edit | layer | test | settings
+let layer = 0;            // 0..3
+let ui = {};              // per-card temporary state, key "layer:line"
+let testUI = null;        // { vals, results, devs }
+let editDraft = null;     // talk being edited (or null for new)
+let audioURL = null;
+const player = $('#player');
+let stopTimer = null, rafId = null, recorder = null, recStream = null, recognition = null;
+
+function newTalk() {
+  return { id: uid(), title: '', l2Lang: 'pt-PT', l1Lang: 'en-GB', lines: [], audio: null, audioType: '', audioSource: '',
+           created: new Date().toISOString(), tests: [], patterns: [], srs: { interval: 0, reps: 0, ease: 2.5, due: null } };
+}
+const lineDone = (L, k) => !!(L.m && L.m[k]);
+const layerCount = (t, k) => t.lines.filter(L => lineDone(L, k)).length;
+const fullyProcessed = t => t.lines.length > 0 && t.lines.every(L => L.m.every(Boolean));
+function currentLayer(t) { for (let k = 0; k < 4; k++) if (layerCount(t, k) < t.lines.length) return k; return 4; }
+async function save() { if (talk) { talk.updated = new Date().toISOString(); await db.put(talk); } }
+
+function setAudioURL() {
+  if (audioURL) URL.revokeObjectURL(audioURL);
+  audioURL = talk && talk.audio ? URL.createObjectURL(talk.audio) : null;
+  player.src = audioURL || '';
+}
+
+// ---------- Audio playback ----------
+function stopAll() {
+  player.pause(); cancelAnimationFrame(rafId); clearTimeout(stopTimer);
+  if (window.speechSynthesis) speechSynthesis.cancel();
+}
+function pickVoice(lang) {
+  const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  return voices.find(v => v.lang === lang) || voices.find(v => v.lang.replace('_', '-') === lang) || voices.find(v => v.lang.slice(0, 2) === lang.slice(0, 2)) || null;
+}
+function tts(text, lang, onEnd) {
+  if (!window.speechSynthesis) { toast('No audio for this talk, and this browser has no built-in voice.'); onEnd && onEnd(0); return; }
+  const u = new SpeechSynthesisUtterance(text); u.lang = lang; const v = pickVoice(lang); if (v) u.voice = v; u.rate = 0.95;
+  const t0 = performance.now(); u.onend = () => onEnd && onEnd((performance.now() - t0) / 1000);
+  speechSynthesis.speak(u);
+}
+const hasTimings = L => talk.audio && L.start != null && L.end != null;
+function playLine(i, onEnd) {
+  stopAll(); const L = talk.lines[i];
+  if (hasTimings(L)) {
+    player.currentTime = L.start;
+    player.play().catch(() => toast('The browser blocked audio. Tap play again.'));
+    const tick = () => {
+      if (player.currentTime >= L.end || player.ended) { player.pause(); onEnd && onEnd(L.end - L.start); return; }
+      if (player.paused) return;
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  } else tts(L.l2, talk.l2Lang, onEnd);
+}
+function playWhole() {
+  stopAll();
+  if (talk.audio) { player.currentTime = 0; player.play().catch(() => toast('The browser blocked audio. Tap play again.')); }
+  else tts(talk.lines.map(L => L.l2).join(' '), talk.l2Lang);
+}
+function estDuration(L) { return hasTimings(L) ? L.end - L.start : Math.max(1.5, L.l2.split(/\s+/).length * 0.45); }
+
+// ---------- Recording ----------
+async function toggleRecord(onDone) {
+  if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recorder = new MediaRecorder(recStream); const chunks = [];
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = () => {
+      recStream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+      onDone(URL.createObjectURL(blob));
+    };
+    recorder.start(); onDone(null, true);
+  } catch (e) { toast('The microphone is blocked or missing.'); }
+}
+
+// ---------- Comparing answers ----------
+function tokens(s, lang) {
+  if (window.Intl && Intl.Segmenter) {
+    try { return [...new Intl.Segmenter(lang, { granularity: 'word' }).segment(s)].filter(x => x.isWordLike).map(x => x.segment); } catch (e) { /* fall through */ }
+  }
+  return s.match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || [];
+}
+const norm = w => w.toLocaleLowerCase().replace(/’/g, "'");
+function compare(original, attempt, lang) {
+  const a = tokens(original, lang), b = tokens(attempt, lang), A = a.map(norm), B = b.map(norm);
+  const n = A.length, m = B.length, dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const ops = []; let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { ops.push({ t: 'ok', w: b[j] }); i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) ops.push({ t: 'miss', w: a[i++] });
+    else ops.push({ t: 'wrong', w: b[j++] });
+  }
+  while (i < n) ops.push({ t: 'miss', w: a[i++] });
+  while (j < m) ops.push({ t: 'wrong', w: b[j++] });
+  const okCount = ops.filter(o => o.t === 'ok').length;
+  return { ops, exact: n === m && okCount === n && n > 0, score: n ? okCount / n : 0 };
+}
+function diffHTML(ops, lang) {
+  const sp = noSpaces(lang) ? '' : ' ';
+  return ops.map(o => o.t === 'ok' ? esc(o.w) : o.t === 'wrong' ? `<span class="wrong">${esc(o.w)}</span>` : `<span class="miss">[+${esc(o.w)}]</span>`).join(sp);
+}
+function diffMarkdown(ops, lang) {
+  const sp = noSpaces(lang) ? '' : ' ';
+  return ops.map(o => o.t === 'ok' ? o.w : o.t === 'wrong' ? `==${o.w}==` : `[+${o.w}]`).join(sp);
+}
+function deviations(ops, line, lang) {
+  const sp = noSpaces(lang) ? '' : ' ', out = []; let cur = null;
+  for (const o of ops) {
+    if (o.t === 'ok') { if (cur) { out.push(cur); cur = null; } continue; }
+    cur = cur || { line, expected: [], said: [] };
+    (o.t === 'miss' ? cur.expected : cur.said).push(o.w);
+  }
+  if (cur) out.push(cur);
+  return out.map(d => ({ line: d.line, expected: d.expected.join(sp), said: d.said.join(sp), branch: '', note: '' }));
+}
+
+// ---------- ElevenLabs ----------
+async function generateAudio(lines) {
+  if (!settings.elKey || !settings.elVoice) throw new Error('Add your ElevenLabs key and voice ID in Settings first.');
+  let text = ''; const ranges = [];
+  lines.forEach((l, i) => { if (i) text += ' '; const s = text.length; text += l; ranges.push([s, text.length]); });
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(settings.elVoice)}/with-timestamps?output_format=mp3_44100_128`;
+  const r = await fetch(url, { method: 'POST', headers: { 'xi-api-key': settings.elKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ text, model_id: settings.elModel }) });
+  if (!r.ok) throw new Error(`ElevenLabs replied ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const j = await r.json();
+  const al = j.alignment || j.normalized_alignment;
+  const blob = base64ToBlob(j.audio_base64, 'audio/mpeg');
+  let timings = ranges.map(() => ({ start: null, end: null }));
+  if (al && al.characters && al.characters.length === text.length) {
+    const st = al.character_start_times_seconds, en = al.character_end_times_seconds;
+    timings = ranges.map(([s, e]) => {
+      let a = s, b = e - 1;
+      while (a < e && /\s/.test(text[a])) a++;
+      while (b > a && /\s/.test(text[b])) b--;
+      return { start: Math.max(0, st[a] - 0.05), end: en[b] + 0.2 };
+    });
+  }
+  return { blob, timings };
+}
+
+// ---------- Rendering ----------
+function renderTabs() {
+  document.querySelectorAll('.tab').forEach(t => {
+    const k = +t.dataset.tab;
+    t.classList.toggle('disabled', !talk || view === 'edit');
+    t.classList.toggle('active', !!talk && ((view === 'layer' && k === layer) || (view === 'test' && k === 4)));
+  });
+}
+function header(title, links) {
+  return `<h1><span>${esc(title)}</span><span class="header-links">${links}</span></h1>`;
+}
+const libLink = `<button class="link" data-act="library">My Talks</button>`;
+const setLink = `<button class="link" data-act="settings">Settings</button>`;
+
+function render() {
+  stopAll(); renderTabs();
+  const page = $('#page');
+  if (view === 'library') page.innerHTML = libraryHTML();
+  else if (view === 'edit') page.innerHTML = editHTML();
+  else if (view === 'settings') page.innerHTML = settingsHTML();
+  else if (view === 'layer') page.innerHTML = layerHTML();
+  else if (view === 'test') page.innerHTML = testHTML();
+  if (view === 'library') loadLibrary();
+  if (view === 'edit') updateCounts();
+  window.scrollTo(0, 0);
+}
+
+function progressHTML(t) {
+  const n = t.lines.length || 1;
+  return `<div class="progress">${LAYERS.map((L, k) => `<div class="bar" title="${L.name}"><div style="width:${100 * layerCount(t, k) / n}%;background:${L.color}"></div></div>`).join('')}</div>
+          <div class="bar-labels">${LAYERS.map((L, k) => `<span>${L.name} ${layerCount(t, k)}/${t.lines.length}</span>`).join('')}</div>`;
+}
+
+// Library
+function libraryHTML() {
+  return header('Tiny Talks', setLink) +
+    `<p class="subtitle">Your talks, line by line, layer by layer.</p>
+     <div id="lib-list"><p class="muted">Loading...</p></div>
+     <div class="row" style="margin-top:20px">
+       <button class="link green" data-act="new">New Tiny Talk</button>
+       <label class="link" style="margin:0;font-size:1.5em">Open a talk file<input type="file" accept=".json,application/json" data-act="import-talk" class="hidden"></label>
+     </div>`;
+}
+async function loadLibrary() {
+  const list = $('#lib-list'); if (!list) return;
+  const talks = (await db.all()).sort((a, b) => (b.updated || b.created).localeCompare(a.updated || a.created));
+  if (!talks.length) {
+    list.innerHTML = `<div class="empty"><p>No talks yet. Make your first one, open a talk file your teacher sent you, or try the sample.</p>
+      <button class="btn" data-act="sample">Add the sample talk</button></div>`;
+    return;
+  }
+  const now = Date.now();
+  list.innerHTML = talks.map(t => {
+    const cl = currentLayer(t), done = fullyProcessed(t);
+    const due = done && t.srs.due && t.srs.due <= now;
+    let status;
+    if (!done) status = `Working on: <strong>${cl < 4 ? LAYERS[cl].name : 'Test'}</strong>`;
+    else if (!t.srs.due) status = `<strong class="tick">Fully processed.</strong> Do the Test, then schedule your first review.`;
+    else status = `Next review: ${new Date(t.srs.due).toLocaleDateString()} ${due ? '<strong class="warn">(due now)</strong>' : ''}`;
+    return `<div class="lib-item ${due ? 'due' : ''}">
+      <div class="lib-title">${esc(t.title || 'Untitled')}</div>
+      <div class="lib-meta">${esc(langName(t.l2Lang))} with ${esc(langName(t.l1Lang))} · ${t.lines.length} lines · audio: ${t.audio ? esc(t.audioSource || 'file') : 'browser voice'}</div>
+      ${progressHTML(t)}
+      <div class="lib-meta">${status}</div>
+      <div class="row">
+        <button class="btn primary" data-act="open" data-id="${t.id}">Open</button>
+        <button class="btn" data-act="edit" data-id="${t.id}">Edit</button>
+        <button class="btn" data-act="share" data-id="${t.id}">Share with a student</button>
+        <button class="btn bad small" data-act="delete" data-id="${t.id}">Delete</button>
+      </div></div>`;
+  }).join('');
+}
+
+// Edit / new
+function langOptions(sel) { return LANGS.map(([c, n]) => `<option value="${c}" ${c === sel ? 'selected' : ''}>${esc(n)}</option>`).join(''); }
+function editHTML() {
+  const t = editDraft, isNew = !t._existing;
+  const elReady = settings.elKey && settings.elVoice;
+  return header(isNew ? 'New Tiny Talk' : 'Edit Talk', libLink) +
+    `<label for="f-title">Title</label><input type="text" id="f-title" value="${esc(t.title)}" style="width:100%">
+     <div class="row">
+       <div><label for="f-l2">Language you're learning (L2)</label><select id="f-l2">${langOptions(t.l2Lang)}</select></div>
+       <div><label for="f-l1">Your language (L1)</label><select id="f-l1">${langOptions(t.l1Lang)}</select></div>
+     </div>
+     <label for="f-l2text">The talk in L2</label>
+     <textarea id="f-l2text" rows="7" placeholder="One sentence per line">${esc(t.lines.map(L => L.l2).join('\n'))}</textarea>
+     <label for="f-l1text">The same talk in L1</label>
+     <textarea id="f-l1text" rows="7" placeholder="One sentence per line, matching the L2 lines">${esc(t.lines.map(L => L.l1).join('\n'))}</textarea>
+     <div class="row"><button class="btn small" data-act="split">Split both into sentences</button><span id="f-counts" class="muted"></span></div>
+     <h3>Audio</h3>
+     <p class="field-note" id="f-audio-status">${t.audio ? `This talk has audio (${esc(t.audioSource || 'file')}).` : 'No audio yet. Without audio, the browser\'s built-in voice reads the lines.'}</p>
+     <div class="row">
+       <button class="btn" data-act="gen-audio" ${elReady ? '' : 'disabled'}>Make audio with ElevenLabs</button>
+       <label class="btn" style="margin:0;font-family:Kalam;font-size:1.02em">Use an audio file<input type="file" accept="audio/*" id="f-audio-file" class="hidden"></label>
+       ${t.audio ? '<button class="btn bad small" data-act="clear-audio">Remove audio</button>' : ''}
+     </div>
+     ${elReady ? '' : '<p class="field-note">To make audio with ElevenLabs, add your key and voice ID in Settings.</p>'}
+     <p class="field-note">ElevenLabs audio plays line by line. An audio file you add yourself plays as a whole; single lines then use the browser voice.</p>
+     <div class="row" style="margin-top:24px">
+       <button class="btn primary" data-act="save-talk">Save talk</button>
+       <button class="link" data-act="library">Cancel</button>
+     </div>`;
+}
+function readForm() {
+  const t = editDraft;
+  t.title = $('#f-title').value.trim(); t.l2Lang = $('#f-l2').value; t.l1Lang = $('#f-l1').value;
+  return { l2: toLines($('#f-l2text').value), l1: toLines($('#f-l1text').value) };
+}
+function updateCounts() {
+  const el = $('#f-counts'); if (!el) return;
+  const a = toLines($('#f-l2text').value).length, b = toLines($('#f-l1text').value).length;
+  el.innerHTML = `L2: ${a} lines · L1: ${b} lines ${a !== b ? '<span class="warn">(they must match)</span>' : ''}`;
+}
+async function saveTalkFromForm() {
+  const { l2, l1 } = readForm(), t = editDraft;
+  if (!t.title) return toast('Give the talk a title.');
+  if (!l2.length) return toast('Add the L2 text.');
+  if (l2.length !== l1.length) return toast('The L2 and L1 texts need the same number of lines.');
+  const old = t.lines;
+  let audioStale = false;
+  t.lines = l2.map((s, i) => {
+    const prev = old[i];
+    if (prev && prev.l2 === s) return { ...prev, l1: l1[i] };
+    if (prev && t.audio && t.audioSource === 'ElevenLabs') audioStale = true;
+    return { l2: s, l1: l1[i], start: null, end: null, m: [false, false, false, false] };
+  });
+  delete t._existing;
+  await db.put(t);
+  talk = t; setAudioURL(); editDraft = null;
+  if (audioStale) toast('You changed the text, so some lines no longer match the audio. Make the audio again.', 4000);
+  else toast('Saved.');
+  ui = {}; testUI = null; layer = currentLayer(talk); view = layer < 4 ? 'layer' : 'test'; if (layer > 3) layer = 3;
+  render();
+}
+
+// Settings
+function settingsHTML() {
+  return header('Settings', talk ? `<button class="link" data-act="back-to-talk">Back to talk</button> ${libLink}` : libLink) +
+    `<h3>ElevenLabs (for teachers making audio)</h3>
+     <p class="field-note">Your key is saved only in this browser. It goes to ElevenLabs and nowhere else. Students don't need one: share a talk with them and the audio goes with it.</p>
+     <label for="s-key">API key</label><input type="password" id="s-key" value="${esc(settings.elKey)}" style="width:100%">
+     <label for="s-voice">Voice ID</label><input type="text" id="s-voice" value="${esc(settings.elVoice)}" style="width:100%" placeholder="Copy it from the voice's page in ElevenLabs">
+     <label for="s-model">Model</label><select id="s-model">${EL_MODELS.map(([v, n]) => `<option value="${v}" ${v === settings.elModel ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+     <div class="row"><button class="btn primary" data-act="save-settings">Save settings</button></div>
+     <h3>Backup</h3>
+     <p class="field-note">Everything lives in this browser. Download a backup now and then, and use it to move your talks to another device.</p>
+     <div class="row">
+       <button class="btn" data-act="backup">Download backup</button>
+       <label class="btn" style="margin:0;font-family:Kalam;font-size:1.02em">Restore a backup<input type="file" accept=".json,application/json" data-act="restore" class="hidden"></label>
+     </div>`;
+}
+
+// Layer views
+function layerHTML() {
+  const L = LAYERS[layer], n = talk.lines.length;
+  return header(talk.title, `<button class="link" data-act="edit" data-id="${talk.id}">Edit</button> ${libLink}`) +
+    `<h2 style="color:${L.color}">${layer + 1}. ${L.name}</h2>
+     <p class="goal">${esc(L.goal)}</p>
+     <div class="row"><button class="btn" data-act="play-whole">▶ Play the whole talk</button>
+       <span class="muted" id="layer-count">${layerCount(talk, layer)} of ${n} lines done</span></div>
+     <div id="cards">${talk.lines.map((_, i) => cardHTML(i)).join('')}</div>
+     ${layerCount(talk, layer) === n ? `<div class="row"><button class="btn primary" data-act="${layer < 3 ? 'next-layer' : 'goto-test'}">${layer < 3 ? 'On to ' + LAYERS[layer + 1].name : 'On to the Test'}</button></div>` : ''}`;
+}
+function verdictHTML(i, st, showOriginal) {
+  if (!st.result) return '';
+  const L = talk.lines[i];
+  if (st.result.exact) return `<div class="verdict-ok">Spot on.</div>`;
+  return `<div class="diff">${diffHTML(st.result.ops, talk.l2Lang)}</div>
+    ${showOriginal ? `<div class="l2 muted">Original: ${esc(L.l2)}</div>` : ''}
+    <div class="verdict-no">Not yet. Highlighted words differ; [+word] means a word is missing.</div>
+    <div class="row"><button class="btn" data-act="retry" data-i="${i}">Try again</button>
+    <button class="btn good small" data-act="accept" data-i="${i}">It's right, count it</button></div>`;
+}
+function cardHTML(i) {
+  const L = talk.lines[i], k = layer, done = lineDone(L, k), locked = k > 0 && !lineDone(L, k - 1), st = ui[k + ':' + i] || {};
+  let h = `<div class="card ${done ? 'done' : ''} ${locked ? 'locked' : ''}" id="card-${i}"><div class="card-num">${i + 1}${done ? ' <span class="tick">✓</span>' : ''}</div><div class="card-body">`;
+  if (locked) return h + `<div class="l2">${esc(L.l2)}</div><div class="muted">Finish ${LAYERS[k - 1].name} for this line first.</div></div></div>`;
+  const gotIt = `<div class="row"><button class="btn good" data-act="got" data-i="${i}">Got it</button><button class="btn bad small" data-act="notyet" data-i="${i}">Not yet</button></div>`;
+  if (k === 0) {
+    if (!st.test) h += `<div class="l2">${esc(L.l2)}</div>`;
+    h += `<div class="row"><button class="btn" data-act="play" data-i="${i}">▶ Play line</button>`;
+    h += st.test ? `<button class="btn small" data-act="untest" data-i="${i}">Show the text</button></div>
+      <textarea class="answer" id="ans-${i}" rows="2" placeholder="Type what you hear">${esc(st.val || '')}</textarea>
+      <div class="row"><button class="btn primary" data-act="check" data-i="${i}">Check</button></div>${verdictHTML(i, st, false)}`
+      : `<button class="btn" data-act="test" data-i="${i}">Test me</button></div>`;
+  } else if (k === 1) {
+    h += `<div class="l2">${esc(L.l2)}</div>
+      <div class="row"><button class="btn" data-act="play" data-i="${i}">▶ Check with audio</button>
+      <button class="btn small" data-act="meaning" data-i="${i}">${st.meaning ? 'Hide' : 'Show'} the meaning</button></div>
+      ${st.meaning ? `<div class="l1">${esc(L.l1)}</div>` : ''}${gotIt}`;
+  } else if (k === 2) {
+    h += `<div class="l1">${esc(L.l1)}</div>
+      <textarea class="answer" id="ans-${i}" rows="2" placeholder="Write it in ${esc(langName(talk.l2Lang))}">${esc(st.val || '')}</textarea>
+      <div class="row"><button class="btn primary" data-act="check" data-i="${i}">Check</button>
+      ${st.result ? `<button class="btn" data-act="play" data-i="${i}">▶ Hear it</button>` : ''}</div>${verdictHTML(i, st, true)}`;
+  } else {
+    const mode = st.mode || '';
+    h += `<div class="row">
+        <button class="btn ${mode === 'repeat' ? 'primary' : ''}" data-act="sp-repeat" data-i="${i}">Listen, then repeat</button>
+        <button class="btn ${mode === 'along' ? 'primary' : ''}" data-act="sp-along" data-i="${i}">Speak along</button>
+        <button class="btn ${mode === 'check' ? 'primary' : ''}" data-act="sp-check" data-i="${i}">Speak, then check</button></div>`;
+    if (mode === 'along' || st.reveal) h += `<div class="l2">${esc(L.l2)}</div>`;
+    if (mode === 'check') h += `<div class="l1">${esc(L.l1)}</div><div class="row"><button class="btn" data-act="play" data-i="${i}">▶ Check</button>
+        ${st.reveal ? '' : `<button class="btn small" data-act="reveal" data-i="${i}">Show the text</button>`}</div>`;
+    if (st.status) h += `<div class="status">${esc(st.status)}</div>`;
+    h += `<div class="row"><button class="btn small" data-act="rec" data-i="${i}">${st.recording ? '■ Stop recording' : '● Record myself'}</button>
+      ${st.recURL ? `<audio controls src="${st.recURL}"></audio>` : ''}</div>${gotIt}`;
+  }
+  return h + `</div></div>`;
+}
+function refreshCard(i) {
+  const el = $('#card-' + i); if (el) el.outerHTML = cardHTML(i);
+  const c = $('#layer-count'); if (c) c.textContent = `${layerCount(talk, layer)} of ${talk.lines.length} lines done`;
+}
+async function markLine(i, k, value) {
+  const was = layerCount(talk, k) === talk.lines.length;
+  talk.lines[i].m[k] = value; await save();
+  const now = layerCount(talk, k) === talk.lines.length;
+  if (was !== now) { render(); if (now) toast(`Every line is done for ${LAYERS[k].name}.`); }
+  else refreshCard(i);
+}
+
+// Test view
+function testHTML() {
+  if (!testUI) testUI = { vals: talk.lines.map(() => ''), results: null, devs: [] };
+  const processed = fullyProcessed(talk);
+  let h = header(talk.title, `<button class="link" data-act="edit" data-id="${talk.id}">Edit</button> ${libLink}`) +
+    `<h2 style="color:var(--c-test)">5. Test &amp; Annotate</h2>
+     <p class="goal">Read each line in ${esc(langName(talk.l1Lang))} and say it in ${esc(langName(talk.l2Lang))} from memory. Type what you said${SR ? ', or press 🎤 and speak' : ''}. Then compare, and mark what each difference is about.</p>
+     ${processed ? '' : `<p class="field-note">Best done after all four layers. You've finished ${LAYERS.map((L, k) => `${L.name} ${layerCount(talk, k)}/${talk.lines.length}`).join(', ')}.</p>`}`;
+  talk.lines.forEach((L, i) => {
+    h += `<div class="card"><div class="card-num">${i + 1}</div><div class="card-body"><div class="l1">${esc(L.l1)}</div>
+      <div class="row" style="flex-wrap:nowrap"><textarea id="t-${i}" rows="2" ${testUI.results ? 'readonly' : ''}>${esc(testUI.vals[i])}</textarea>
+      ${SR && !testUI.results ? `<button class="btn small" data-act="dictate" data-i="${i}" title="Speak">🎤</button>` : ''}</div>`;
+    if (testUI.results) {
+      const r = testUI.results[i];
+      h += r.skipped ? `<div class="muted">Skipped.</div>` : r.exact ? `<div class="verdict-ok">Spot on.</div>` : `<div class="diff">${diffHTML(r.ops, talk.l2Lang)}</div><div class="l2 muted">Original: ${esc(L.l2)}</div>`;
+      testUI.devs.forEach((d, di) => {
+        if (d.line !== i) return;
+        h += `<div class="dev"><strong>${d.expected ? esc(d.expected) : '(nothing)'}</strong> → you said <strong>${d.said ? esc(d.said) : '(nothing)'}</strong>
+          <select data-dev="${di}" data-field="branch"><option value="">What's it about?</option>${BRANCHES.map(b => `<option ${d.branch === b ? 'selected' : ''}>${b}</option>`).join('')}</select>
+          <input type="text" data-dev="${di}" data-field="note" value="${esc(d.note)}" placeholder="Note (optional). Links like [[2.2.1 Pretérito Perfeito Simples - Falei]] work in Obsidian."></div>`;
+      });
+    }
+    h += `</div></div>`;
+  });
+  if (!testUI.results) h += `<div class="row"><button class="btn primary" data-act="compare">Compare with the original</button></div>`;
+  else h += `<div class="row"><button class="btn primary" data-act="save-test">Save this test</button><button class="btn" data-act="new-test">Start over</button></div>`;
+
+  if (talk.tests.length) {
+    h += `<h3>Past tests</h3>` + talk.tests.slice().reverse().map(t => `<div class="lib-meta">${esc(t.date)}: ${Math.round(t.score * 100)}% of words right</div>`).join('');
+  }
+  h += `<h3>Take it to Obsidian</h3>
+    <p class="field-note">A note in your Tiny Talk format: the text in both languages, your tests with mistakes highlighted, the patterns you marked, and Osmosis cards for each line.</p>
+    <div class="row"><button class="btn" data-act="export-md">Download the note</button>${talk.audio ? '<button class="btn" data-act="export-audio">Download the audio</button>' : ''}</div>`;
+  if (processed) {
+    h += `<div class="srs"><h3 style="margin-top:0">Review schedule</h3>
+      <p class="field-note">Every line has been through all four layers. After each full test, grade how it went to set the next review.</p>
+      <div class="row">${[[1, 'Again (1 day)'], [3, 'Hard (3 days)'], [5, 'Good (5 days)'], [7, 'Easy (7 days)']].map(([g, l]) => `<button class="btn ${g === 1 ? 'bad' : ''}" data-act="grade" data-g="${g}">${l}</button>`).join('')}</div>
+      <p class="field-note">${talk.srs.due ? 'Next review: ' + new Date(talk.srs.due).toLocaleDateString() : 'No review scheduled yet.'}</p></div>`;
+  }
+  return h;
+}
+function gradeReview(g) {
+  const s = talk.srs;
+  if (g === 1) { s.interval = 1; s.reps = 0; }
+  else {
+    s.reps += 1;
+    s.interval = s.reps === 1 ? g : s.reps === 2 ? g * 2 : Math.round(s.interval * s.ease);
+    s.ease = Math.max(1.3, s.ease + (0.1 - (5 - g) * (0.08 + (5 - g) * 0.02)));
+  }
+  s.due = Date.now() + s.interval * 86400000;
+}
+
+// ---------- Export / import ----------
+function buildMarkdown(t) {
+  const l2s = t.l2Lang.slice(0, 2), l1s = t.l1Lang.slice(0, 2), mp3 = `${safeName(t.title)}.mp3`;
+  const out = ['---', 'osmosis-cards: true', `osmosis-deck: Tiny Talks/${safeName(t.title)}`, '---', '#-map', '', `# Tiny Talk - ${t.title}`, '',
+    '- [[#Audio|Audio]]', '- [[#Text|Text]]', '- [[#Exercises|Exercises]]', '- [[#Patterns|Patterns]]', '- [[#Cards|Cards]]', '', '## Audio',
+    t.audio ? `![[${mp3}]]` : '(no audio file)', '', '## Text', '', `> [!text]- ${t.title} [${l2s}]`, `>${t.lines.map(L => L.l2).join(' ')}`, '',
+    `> [!text]- ${t.title} [${l1s}]`];
+  t.lines.forEach((L, i) => { out.push(`>${i + 1}. ${L.l2}`, `>   ==(${L.l1})==`); if (i < t.lines.length - 1) out.push('>'); });
+  out.push('', '## Exercises', '');
+  if (!t.tests.length) out.push('(no tests yet)', '');
+  t.tests.forEach(test => {
+    out.push(`> [!tip]- ${test.date} (${Math.round(test.score * 100)}%)`);
+    test.attempts.forEach((a, i) => out.push(`>${i + 1}. ${a.trim() ? diffMarkdown(compare(t.lines[i].l2, a, t.l2Lang).ops, t.l2Lang) : '(skipped)'}`, '>'));
+    out.pop(); out.push('');
+  });
+  out.push('Key: ==word== is what you said differently; [+word] is a word you left out.', '', '## Patterns', '');
+  const tagged = t.patterns.filter(p => p.branch);
+  if (!tagged.length) out.push('(none marked yet)', '');
+  BRANCHES.forEach(b => {
+    const ps = tagged.filter(p => p.branch === b); if (!ps.length) return;
+    out.push(`### ${b}`);
+    ps.forEach(p => out.push(`- ${p.date}, line ${p.line + 1}: "${p.expected || '(nothing)'}" → "${p.said || '(nothing)'}"${p.note ? ' ' + p.note : ''}`));
+    out.push('');
+  });
+  out.push('## Cards', '');
+  t.lines.forEach((L, i) => out.push('```osmosis', `TT - ${t.title} - line ${i + 1}`, L.l1, '***', L.l2, '```', ''));
+  out.push('---', '> [!info] SOURCE', `>Tiny Talks app, exported ${today()}`);
+  return out.join('\n');
+}
+async function talkPackage(t, forStudent) {
+  const copy = JSON.parse(JSON.stringify({ ...t, audio: null }));
+  if (forStudent) {
+    copy.lines.forEach(L => { L.m = [false, false, false, false]; });
+    copy.tests = []; copy.patterns = []; copy.srs = { interval: 0, reps: 0, ease: 2.5, due: null };
+  }
+  return { format: 'tiny-talk', version: 1, talk: copy, audio: t.audio ? await blobToBase64(t.audio) : null };
+}
+function unpack(pkg) {
+  if (!pkg || pkg.format !== 'tiny-talk' || !pkg.talk) throw new Error('This file is not a Tiny Talk.');
+  const t = Object.assign(newTalk(), pkg.talk);
+  t.audio = pkg.audio ? base64ToBlob(pkg.audio, t.audioType || 'audio/mpeg') : null;
+  t.lines.forEach(L => { L.m = L.m || [false, false, false, false]; });
+  return t;
+}
+const readJSONFile = file => file.text().then(s => JSON.parse(s));
+
+// ---------- Opening a talk ----------
+async function openTalk(id) {
+  talk = await db.get(id); if (!talk) return;
+  setAudioURL(); ui = {}; testUI = null;
+  const cl = currentLayer(talk);
+  if (cl < 4) { layer = cl; view = 'layer'; } else { layer = 3; view = 'test'; }
+  render();
+}
+
+// ---------- Events ----------
+document.addEventListener('click', async e => {
+  const tab = e.target.closest('.tab');
+  if (tab && talk) {
+    const k = +tab.dataset.tab; ui = {};
+    if (k === 4) view = 'test'; else { view = 'layer'; layer = k; }
+    return render();
+  }
+  const b = e.target.closest('[data-act]'); if (!b || b.tagName === 'INPUT') return;
+  const act = b.dataset.act, i = b.dataset.i != null ? +b.dataset.i : null, key = layer + ':' + i;
+  const st = i != null ? (ui[key] = ui[key] || {}) : null;
+  try {
+    switch (act) {
+      case 'library': talk = null; editDraft = null; view = 'library'; return render();
+      case 'settings': view = 'settings'; return render();
+      case 'back-to-talk': view = 'layer'; return render();
+      case 'new': editDraft = newTalk(); view = 'edit'; talk = null; return render();
+      case 'sample': {
+        const t = newTalk(); Object.assign(t, { title: SAMPLE.title, l2Lang: SAMPLE.l2Lang, l1Lang: SAMPLE.l1Lang });
+        t.lines = SAMPLE.l2.map((s, k) => ({ l2: s, l1: SAMPLE.l1[k], start: null, end: null, m: [false, false, false, false] }));
+        await db.put(t); return loadLibrary();
+      }
+      case 'open': return openTalk(b.dataset.id);
+      case 'edit': {
+        const t = await db.get(b.dataset.id); editDraft = t; editDraft._existing = true; talk = null; view = 'edit'; return render();
+      }
+      case 'delete': {
+        if (!confirm('Delete this talk and all its progress?')) return;
+        await db.del(b.dataset.id); return loadLibrary();
+      }
+      case 'share': {
+        const t = await db.get(b.dataset.id);
+        download(`${safeName(t.title)}.tinytalk.json`, JSON.stringify(await talkPackage(t, true)), 'application/json');
+        return toast('Send this file to your student. They open it with "Open a talk file".', 3500);
+      }
+      case 'split': {
+        $('#f-l2text').value = splitSentences($('#f-l2text').value).join('\n');
+        $('#f-l1text').value = splitSentences($('#f-l1text').value).join('\n');
+        return updateCounts();
+      }
+      case 'gen-audio': {
+        const { l2 } = readForm(); if (!l2.length) return toast('Add the L2 text first.');
+        b.disabled = true; b.textContent = 'Making audio...';
+        try {
+          const { blob, timings } = await generateAudio(l2);
+          editDraft.audio = blob; editDraft.audioType = 'audio/mpeg'; editDraft.audioSource = 'ElevenLabs';
+          editDraft.lines = l2.map((s, k) => {
+            const prev = editDraft.lines[k];
+            return prev && prev.l2 === s ? { ...prev, ...timings[k] } : { l2: s, l1: '', m: [false, false, false, false], ...timings[k] };
+          });
+          $('#f-audio-status').textContent = timings.some(x => x.start == null) ? 'Audio made, but the line timings did not come through. It will play as a whole.' : 'Audio made, with timings for every line. Save to keep it.';
+        } catch (err) { toast(err.message.includes('Failed to fetch') ? 'Could not reach ElevenLabs. Check your connection and key.' : err.message, 5000); }
+        b.disabled = false; b.textContent = 'Make audio with ElevenLabs'; return;
+      }
+      case 'clear-audio': editDraft.audio = null; editDraft.audioSource = ''; editDraft.lines.forEach(L => { L.start = L.end = null; }); return render();
+      case 'save-talk': return saveTalkFromForm();
+      case 'save-settings':
+        settings.elKey = $('#s-key').value.trim(); settings.elVoice = $('#s-voice').value.trim(); settings.elModel = $('#s-model').value;
+        saveSettings(); return toast('Settings saved in this browser.');
+      case 'backup': {
+        const talks = await db.all(); const pk = [];
+        for (const t of talks) pk.push(await talkPackage(t, false));
+        return download(`${hexdate()} - Tiny Talks backup.json`, JSON.stringify({ format: 'tiny-talks-backup', version: 1, talks: pk }), 'application/json');
+      }
+      case 'play-whole': return playWhole();
+      case 'play': return playLine(i);
+      case 'test': st.test = true; st.result = null; refreshCard(i); return $('#ans-' + i).focus();
+      case 'untest': st.test = false; return refreshCard(i);
+      case 'meaning': st.meaning = !st.meaning; return refreshCard(i);
+      case 'check': {
+        st.val = $('#ans-' + i).value; if (!st.val.trim()) return toast('Write your answer first.');
+        st.result = compare(talk.lines[i].l2, st.val, talk.l2Lang);
+        if (st.result.exact) return markLine(i, layer, true);
+        return refreshCard(i);
+      }
+      case 'retry': st.result = null; st.val = ''; refreshCard(i); return $('#ans-' + i).focus();
+      case 'accept': return markLine(i, layer, true);
+      case 'got': return markLine(i, layer, true);
+      case 'notyet': return markLine(i, layer, false);
+      case 'reveal': st.reveal = true; return refreshCard(i);
+      case 'sp-repeat': {
+        st.mode = 'repeat'; st.reveal = false; st.status = 'Listen...'; refreshCard(i);
+        return playLine(i, () => {
+          st.status = 'Your turn. Say it now.'; refreshCard(i);
+          stopTimer = setTimeout(() => { st.status = ''; st.reveal = true; refreshCard(i); }, estDuration(talk.lines[i]) * 1300 + 800);
+        });
+      }
+      case 'sp-along': st.mode = 'along'; st.status = 'Speak with the audio.'; refreshCard(i); return playLine(i, () => { st.status = ''; refreshCard(i); });
+      case 'sp-check': st.mode = 'check'; st.reveal = false; st.status = 'Say it, then press Check.'; return refreshCard(i);
+      case 'rec': return toggleRecord((url, started) => { st.recording = !!started; if (url) st.recURL = url; refreshCard(i); });
+      case 'next-layer': layer++; ui = {}; return render();
+      case 'goto-test': view = 'test'; return render();
+      case 'dictate': {
+        if (recognition) { recognition.stop(); return; }
+        recognition = new SR(); recognition.lang = talk.l2Lang; recognition.interimResults = false;
+        b.textContent = '…';
+        recognition.onresult = ev => { const ta = $('#t-' + i); const said = ev.results[0][0].transcript; ta.value = (ta.value ? ta.value + ' ' : '') + said; testUI.vals[i] = ta.value; };
+        recognition.onerror = ev => toast(ev.error === 'not-allowed' ? 'The microphone is blocked.' : 'Could not hear that. Try again or type it.');
+        recognition.onend = () => { recognition = null; b.textContent = '🎤'; };
+        return recognition.start();
+      }
+      case 'compare': {
+        talk.lines.forEach((_, k) => { testUI.vals[k] = $('#t-' + k).value; });
+        if (testUI.vals.every(v => !v.trim())) return toast('Say or write at least one line first.');
+        testUI.results = talk.lines.map((L, k) => testUI.vals[k].trim() ? compare(L.l2, testUI.vals[k], talk.l2Lang) : { ...compare(L.l2, '', talk.l2Lang), skipped: true });
+        testUI.devs = testUI.results.flatMap((r, k) => r.skipped ? [] : deviations(r.ops, k, talk.l2Lang));
+        return render();
+      }
+      case 'new-test': testUI = null; return render();
+      case 'save-test': {
+        const words = testUI.results.reduce((s, r) => s + r.ops.filter(o => o.t !== 'wrong').length, 0);
+        const ok = testUI.results.reduce((s, r) => s + r.ops.filter(o => o.t === 'ok').length, 0);
+        talk.tests.push({ date: today(), attempts: testUI.vals.slice(), score: words ? ok / words : 0 });
+        talk.patterns.push(...testUI.devs.map(d => ({ ...d, date: today() })));
+        await save(); testUI = null; render(); return toast('Test saved.');
+      }
+      case 'grade': gradeReview(+b.dataset.g); await save(); render(); return toast(`Next review in ${talk.srs.interval} day${talk.srs.interval === 1 ? '' : 's'}.`);
+      case 'export-md': return download(`${hexdate()} - Tiny Talk - ${safeName(talk.title)}.md`, buildMarkdown(talk), 'text/markdown');
+      case 'export-audio': return download(`${safeName(talk.title)}.mp3`, talk.audio);
+    }
+  } catch (err) { console.error(err); toast('Something went wrong: ' + err.message, 4000); }
+});
+
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'f-l2text' || t.id === 'f-l1text') updateCounts();
+  if (t.id && t.id.startsWith('t-') && testUI) testUI.vals[+t.id.slice(2)] = t.value;
+  if (t.id && t.id.startsWith('ans-')) { const st = ui[layer + ':' + t.id.slice(4)]; if (st) st.val = t.value; }
+  if (t.dataset && t.dataset.dev != null && testUI) testUI.devs[+t.dataset.dev][t.dataset.field] = t.value;
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  if (t.dataset && t.dataset.dev != null && testUI) testUI.devs[+t.dataset.dev][t.dataset.field] = t.value;
+  try {
+    if (t.id === 'f-audio-file' && t.files[0]) {
+      const f = t.files[0];
+      editDraft.audio = f; editDraft.audioType = f.type || 'audio/mpeg'; editDraft.audioSource = 'your file';
+      editDraft.lines.forEach(L => { L.start = L.end = null; });
+      $('#f-audio-status').textContent = `Audio file added: ${f.name}. Save to keep it.`;
+    }
+    if (t.dataset.act === 'import-talk' && t.files[0]) {
+      const imported = unpack(await readJSONFile(t.files[0]));
+      if (await db.get(imported.id) && !confirm('You already have this talk. Replace it, including your progress?')) return;
+      await db.put(imported); toast(`Added "${imported.title}".`); loadLibrary();
+    }
+    if (t.dataset.act === 'restore' && t.files[0]) {
+      const data = await readJSONFile(t.files[0]);
+      if (data.format !== 'tiny-talks-backup') throw new Error('This file is not a Tiny Talks backup.');
+      if (!confirm(`Restore ${data.talks.length} talks? Any of these talks already in this browser will be replaced.`)) return;
+      for (const p of data.talks) await db.put(unpack(p));
+      toast('Backup restored.');
+    }
+  } catch (err) { toast(err.message, 4000); }
+  t.value && t.type === 'file' && (t.value = '');
+});
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => {};
+
+render();
+</script>
+</body>
+</html>
